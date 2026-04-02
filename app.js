@@ -16,8 +16,8 @@ app.use(cors({
 // routes
 app.use("/api/v1/auth", require("./routes/authRoute"));
 app.use("/api/v1/feed", require("./routes/feedRoute"));
-
-
+app.use("/api/v1/comment", require("./routes/commentRoute"));
+app.use("/api/v1/reply", require("./routes/replieRoute"));
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -26,7 +26,6 @@ app.get("/", (req, res) => {
 app.use((req, res, next) => {
   next(createError(404, "route not exist"));
 });
-
 
 app.use((error, req, res, next) => {
   errorResponse(res, {
