@@ -15,6 +15,9 @@ app.use(cors({
 
 // routes
 app.use("/api/v1/auth", require("./routes/authRoute"));
+app.use("/api/v1/feed", require("./routes/feedRoute"));
+
+
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
