@@ -4,10 +4,9 @@ const Comment = require("../model/commentModel");
 const Reply = require("../model/replyModel");
 const { successResponse } = require("../response/response");
 
-
 exports.createPost = async (req, res) => {
   try {
-    const { text, isPublic } = req.body; 
+    const { text, isPublic } = req.body;
     const file = req.file;
 
     if (!text && !file) {
@@ -33,9 +32,9 @@ exports.createPost = async (req, res) => {
     }
 
     const post = await FeedPost.create({
-      user: req.user.userId,        
-      text: text || "",              
-      image: imageData,          
+      user: req.user.userId,
+      text: text || "",
+      image: imageData,
       isPublic: isPublic !== undefined ? isPublic : true,
     });
 
@@ -46,29 +45,27 @@ exports.createPost = async (req, res) => {
   }
 };
 
-
 exports.getFeed = async (req, res) => {
   try {
-
     const posts = await FeedPost.find({
-      $or: [
-        { isPublic: true },
-        { user: req.user.userId },
-      ]
+      $or: [{ isPublic: true }, { user: req.user.userId }],
     })
       .sort({ createdAt: -1 })
       .populate("user", "firstName lastName")
+      .populate("likes", "firstName lastName")
       .lean();
 
     for (let post of posts) {
       post.comments = await Comment.find({ post: post._id })
         .populate("user", "firstName lastName")
+        .populate("likes", "firstName lastName")
         .sort({ createdAt: 1 })
         .lean();
 
       for (let comment of post.comments) {
         comment.replies = await Reply.find({ comment: comment._id })
           .populate("user", "firstName lastName")
+          .populate("likes", "firstName lastName")
           .sort({ createdAt: 1 })
           .lean();
       }
@@ -86,29 +83,63 @@ exports.getFeed = async (req, res) => {
 
 exports.likeUnlikePost = async (req, res) => {
   try {
-    console.log(req.params.postId)
+    console.log(req.params.postId);
     const post = await FeedPost.findById(req.params.postId);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
     const userId = req.user.userId.toString();
 
     if (post.likes.includes(userId)) {
-                                                                         
-      post.likes = post.likes.filter(id => id.toString() !== userId);
- 
+      post.likes = post.likes.filter((id) => id.toString() !== userId);
     } else {
       post.likes.push(userId);
     }
 
     await post.save();
 
-      successResponse(res, {
-        statusCode: 200,
-        message: "Post like status updated",
-        data: post,
-      });
+    successResponse(res, {
+      statusCode: 200,
+      message: "Post like status updated",
+      data: post,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
+exports.deletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+
+    const post = await FeedPost.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (post.user.toString() !== req.user.userId) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this post" });
+    }
+
+    if (post.image?.public_id) {
+      await cloudinary.uploader.destroy(post.image.public_id, {
+        resource_type: "image",
+      });
+    }
+
+    const comments = await Comment.find({ post: post._id });
+    for (let comment of comments) {
+      await Reply.deleteMany({ comment: comment._id });
+    }
+    await Comment.deleteMany({ post: post._id });
+
+    await FeedPost.findByIdAndDelete(post._id);
+
+    return res.status(200).json({ message: "Post deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+};

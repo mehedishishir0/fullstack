@@ -13,7 +13,7 @@ const {
 exports.registereUser = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
-
+   
     if (!firstName || !lastName || !email || !password) {
       throw createError(400, "All fields are required");
     }
@@ -50,7 +50,6 @@ exports.loginUser = async (req, res, next) => {
     if (!email || !password) {
       throw createError(400, "Email and password required");
     }
-
     const user = await AuthModel.findOne({ email });
 
     if (!user) throw createError(404, "User not found");
@@ -89,6 +88,7 @@ exports.loginUser = async (req, res, next) => {
   }
 };
 
+// ================= GOOGLE LOGIN =================
 exports.googleAuth = async (req, res, next) => {
   try {
     const { email, firstName, lastName } = req.body;
