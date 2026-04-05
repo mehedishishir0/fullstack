@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: ["http://localhost:3000","http://localhost:3001","http://localhost:3002","https://mhshishir.vercel.app","https://adminmhshishir.vercel.app","https://mehedi-hasan-shishir.vercel.app"],
+  origin: ["http://localhost:3000"],
   credentials: true,
 }));
 

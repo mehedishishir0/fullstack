@@ -10,7 +10,6 @@ const feedPostSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: true,
     },
     image: {
      url:{ type: String },

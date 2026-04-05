@@ -9,7 +9,6 @@ const {
   verifyToken,
 } = require("../helper/jwt");
 
-
 // ================= REGISTER =================
 exports.registereUser = async (req, res, next) => {
   try {
@@ -43,7 +42,6 @@ exports.registereUser = async (req, res, next) => {
   }
 };
 
-
 // ================= LOGIN =================
 exports.loginUser = async (req, res, next) => {
   try {
@@ -56,6 +54,8 @@ exports.loginUser = async (req, res, next) => {
     const user = await AuthModel.findOne({ email });
 
     if (!user) throw createError(404, "User not found");
+    if (user.provider !== "credentials")
+      throw createError(400, "Use Google login");
 
     const isMatch = await bcryptjs.compare(password, user.password);
 
@@ -69,7 +69,6 @@ exports.loginUser = async (req, res, next) => {
     const newRefreshToken = createRefreshToken({
       userId: user._id,
     });
-
 
     user.refreshToken = newRefreshToken;
     await user.save();
@@ -90,6 +89,52 @@ exports.loginUser = async (req, res, next) => {
   }
 };
 
+exports.googleAuth = async (req, res, next) => {
+  try {
+    const { email, firstName, lastName } = req.body;
+    console.log(email, firstName, lastName);
+    let user = await AuthModel.findOne({ email });
+
+    if (user.provider !== "google")
+      throw createError(400, "Use credentials login");
+    
+    if (!user) {
+      user = await AuthModel.create({
+        email,
+        firstName,
+        lastName,
+        password: "",
+        provider: "google",
+      });
+    }
+
+    const accessToken = createAccessToken({
+      userId: user._id,
+      role: user.role,
+    });
+
+    const refreshToken = createRefreshToken({
+      userId: user._id,
+    });
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    const userData = user.toObject();
+    delete userData.password;
+
+    res.json({
+      success: true,
+      data: {
+        user: userData,
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // ================= REFRESH TOKEN =================
 exports.refreshToken = async (req, res, next) => {
@@ -100,10 +145,7 @@ exports.refreshToken = async (req, res, next) => {
       throw createError(401, "Refresh token required");
     }
 
-    const decoded = verifyToken(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET
-    );
+    const decoded = verifyToken(refreshToken, process.env.JWT_REFRESH_SECRET);
 
     const user = await AuthModel.findById(decoded.userId);
 
@@ -125,12 +167,11 @@ exports.refreshToken = async (req, res, next) => {
   }
 };
 
-
 // ================= LOGOUT =================
 exports.logoutUser = async (req, res, next) => {
   try {
     const userId = req.user.userId;
-
+    console.log(userId);
     await AuthModel.findByIdAndUpdate(userId, {
       refreshToken: null,
     });
