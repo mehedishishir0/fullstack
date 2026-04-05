@@ -92,12 +92,8 @@ exports.loginUser = async (req, res, next) => {
 exports.googleAuth = async (req, res, next) => {
   try {
     const { email, firstName, lastName } = req.body;
-    console.log(email, firstName, lastName);
     let user = await AuthModel.findOne({ email });
 
-    if (user.provider !== "google")
-      throw createError(400, "Use credentials login");
-    
     if (!user) {
       user = await AuthModel.create({
         email,
@@ -107,7 +103,6 @@ exports.googleAuth = async (req, res, next) => {
         provider: "google",
       });
     }
-
     const accessToken = createAccessToken({
       userId: user._id,
       role: user.role,
